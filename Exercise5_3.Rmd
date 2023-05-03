@@ -1,0 +1,90 @@
+---
+title: "Exercise5"
+author: "Mikel Baraza Vidal, Adriana Chust Vendrell y Belén Inglés Granero"
+date: "2023-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reshape2)
+library(plotly)
+library(pdp)
+library(dplyr)
+library(caret)
+library(partykit)
+library(mlbench)
+library(randomForest)
+library(ggplot2)
+library(lattice)
+library(fastDummies)
+library(gridExtra)
+library(xrf)
+library(partykit)
+options(warn = -1)
+
+```
+
+**3.- PDP to explain the price of a house. EXERCISE: Apply the previous concepts to predict the price of a house from the database kc_house_data.csv. In this case, use again a random forest approximation for the prediction based on the features bedrooms, bathrooms, sqft_living, sqft_lot, floors and yr_built.**
+
+```{r }
+df = read.csv("kc_house_data.csv")
+random_sample <- df %>% sample_n(5000, replace = FALSE)
+
+```
+
+```{r }
+hv_index <- createDataPartition(random_sample$price, p = .8, list = FALSE)
+tr <- random_sample[ hv_index, ]
+te <- random_sample[-hv_index, ]
+
+```
+
+```{r }
+rf <- randomForest(price~ bedrooms + bathrooms + sqft_living + sqft_lot + floors + yr_built, data=tr) 
+
+#--------------------------------------------
+p1 <- predict(rf, tr)
+```
+
+```{r }
+var_imp <- importance(rf)
+varImpPlot(rf)
+```
+
+```{r }
+
+bedrooms = partial_data <- partial(object = rf, pred.var = c("bedrooms"), grid.resolution = c(20, 20), data = tr)
+
+bedrooms_partial = plotPartial(bedrooms, plot.engine = "ggplot2", zlab = "Housing price", ylab="", xlab = "Bedrooms", rug=TRUE, train=tr)
+
+bathrooms = partial_data <- partial(object = rf, pred.var = c("bathrooms"), grid.resolution = c(20, 20), data = tr)
+
+bathrooms_partial = plotPartial(bathrooms, plot.engine = "ggplot2", zlab = "Housing price", ylab="",xlab = "Bathrooms", rug=TRUE, train=tr)
+
+sqft_living = partial_data <- partial(object = rf, pred.var = c("sqft_living"), grid.resolution = c(20, 20), data = tr)
+
+sqft_living_partial = plotPartial(sqft_living, plot.engine = "ggplot2", zlab = "Housing price", ylab="",xlab = "sqft_living", rug=TRUE, train=tr)
+
+floors = partial_data <- partial(object = rf, pred.var = c("floors"), grid.resolution = c(20, 20), data = tr)
+
+floors_partial = plotPartial(floors, plot.engine = "ggplot2", zlab = "Housing price", ylab="", xlab = "floors",rug=TRUE, train=tr)
+
+sqft_lot = partial_data <- partial(object = rf, pred.var = c("sqft_lot"), grid.resolution = c(20, 20), data = tr)
+
+sqft_lot_partial = plotPartial(sqft_lot, plot.engine = "ggplot2", zlab = "Housing price", ylab="", xlab = "sqft_lot",rug=TRUE, train=tr)
+
+yr_built = partial_data <- partial(object = rf, pred.var = c("yr_built"), grid.resolution = c(20, 20), data = tr)
+
+yr_built_partial = plotPartial(yr_built, plot.engine = "ggplot2", zlab = "Housing price", ylab="", xlab = "yr_built",rug=TRUE, train=tr)
+
+
+```
+
+```{r }
+bedrooms_partial; bathrooms_partial; floors_partial; sqft_living_partial; sqft_lot_partial;yr_built_partial
+```
+
+```{r }
+grid.arrange(bedrooms_partial, bathrooms_partial, floors_partial, sqft_living_partial, sqft_lot_partial, yr_built_partial, ncol = 3, left = "Predictive price of a house", top = textGrob("One Dimensional Partial Dependency Plot", vjust = 1, gp = gpar(fontface = "bold", cex = 1.25)))
+```
