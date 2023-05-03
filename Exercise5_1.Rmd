@@ -1,0 +1,96 @@
+---
+title: "Exercise5"
+author: "Mikel Baraza Vidal, Adriana Chust Vendrell y Belén Inglés Granero"
+date: "2023-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reshape2)
+library(plotly)
+library(dplyr)
+library(fastDummies)
+library(caret)
+library(mlbench)
+library(ggplot2)
+library(lattice)
+```
+
+# Exercise2
+
+```{r cars}
+datos = read.csv("day.csv")
+df = datos
+
+# Variables dummies
+df = dummy_cols(df,  select_columns = c("season"), remove_first_dummy = TRUE)
+
+# Variable MISTY
+df$MISTY[df$weathersit==2] = 1
+df$MISTY[df$weathersit!=2] = 0
+
+# Variable RAIN
+df$RAIN[df$weathersit==3] = 1
+df$RAIN[df$weathersit==4] = 1
+df$RAIN[df$weathersit!=3&df$weathersit!=4] = 0
+
+# Denormalize temp, hum and windspeed
+df$temp = df$temp*47 - 8
+df$hum = df$hum*100
+df$windspeed = df$windspeed*67
+
+# days since days_since_2011
+df$days_since_2011 = as.Date(df$dteday)-as.Date("2011-01-01")
+df$days_since_2011 = sapply(strsplit(as.character(df$days_since_2011), 'days'), `[[`, 1)
+df$days_since_2011 = as.numeric(df$days_since_2011)
+```
+
+
+```{r}
+set.seed(100)
+library(partykit)
+new_df <- subset(df, select = c("cnt", "workingday", "holiday", "season", "MISTY", "RAIN", "temp", "hum", "windspeed", "days_since_2011"))
+
+suppressWarnings({
+fit_rf <- train(cnt ~ workingday + holiday + season + MISTY + RAIN + temp + hum + windspeed + days_since_2011, data = new_df, method = "rf")})
+
+```
+
+
+```{r}
+
+library(party)
+library(caret)
+library(pdp)
+
+days = partial_data <- partial(object = fit_rf, pred.var = c("days_since_2011"), grid.resolution = c(20, 20), data = newdata)
+
+days_partial = plotPartial(days, plot.engine = "ggplot2", zlab = "Bike Rentals", ylab="", xlab = "Days since 2011", rug=TRUE, train=new_df)
+
+temp = partial_data <- partial(object = fit_rf, pred.var = c("temp"), grid.resolution = c(20, 20), data = newdata)
+
+temp_partial = plotPartial(temp, plot.engine = "ggplot2", zlab = "Bike Rentals", ylab="",xlab = "Temperature", rug=TRUE, train=new_df)
+
+hum = partial_data <- partial(object = fit_rf, pred.var = c("hum"), grid.resolution = c(20, 20), data = newdata)
+
+hum_partial = plotPartial(hum, plot.engine = "ggplot2", zlab = "Bike Rentals", ylab="",xlab = "Humidity", rug=TRUE, train=new_df)
+
+wind = partial_data <- partial(object = fit_rf, pred.var = c("windspeed"), grid.resolution = c(20, 20), data = newdata)
+
+wind_partial = plotPartial(wind, plot.engine = "ggplot2", zlab = "Bike Rentals", ylab="", xlab = "Wind speed",rug=TRUE, train=new_df)
+
+```
+
+
+
+```{r}
+
+
+# Mostrar los gráficos juntos
+library(gridExtra)
+grid.arrange(days_partial, temp_partial, hum_partial, wind_partial, ncol = 2, left = "Predictive number of bike rentals", top = textGrob("One Dimensional Partial Dependency Plot", vjust = 1, gp = gpar(fontface = "bold", cex = 1.25)))
+
+
+```
+
