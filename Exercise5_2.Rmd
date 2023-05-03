@@ -1,0 +1,91 @@
+---
+title: "Exercise5"
+author: "Mikel Baraza Vidal, Adriana Chust Vendrell y Belén Inglés Granero"
+date: "2023-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reshape2)
+library(plotly)
+library(dplyr)
+library(fastDummies)
+library(caret)
+library(mlbench)
+library(ggplot2)
+library(lattice)
+```
+
+# Exercise2
+
+```{r cars}
+datos = read.csv("day.csv")
+df = datos
+
+# Variables dummies
+df = dummy_cols(df,  select_columns = c("season"), remove_first_dummy = TRUE)
+
+# Variable MISTY
+df$MISTY[df$weathersit==2] = 1
+df$MISTY[df$weathersit!=2] = 0
+
+# Variable RAIN
+df$RAIN[df$weathersit==3] = 1
+df$RAIN[df$weathersit==4] = 1
+df$RAIN[df$weathersit!=3&df$weathersit!=4] = 0
+
+# Denormalize temp, hum and windspeed
+df$temp = df$temp*47 - 8
+df$hum = df$hum*100
+df$windspeed = df$windspeed*67
+
+# days since days_since_2011
+df$days_since_2011 = as.Date(df$dteday)-as.Date("2011-01-01")
+df$days_since_2011 = sapply(strsplit(as.character(df$days_since_2011), 'days'), `[[`, 1)
+df$days_since_2011 = as.numeric(df$days_since_2011)
+```
+
+
+```{r}
+
+library(partykit)
+new_df <- subset(df, select = c("cnt", "workingday", "holiday", "season", "MISTY", "RAIN", "temp", "hum", "windspeed", "days_since_2011"))
+
+suppressWarnings({
+fit_rf <- train(cnt ~ workingday + holiday + season + MISTY + RAIN + temp + hum + windspeed + days_since_2011, data = new_df, method = "rf")})
+
+```
+
+
+```{r}
+
+library(party)
+library(caret)
+library(pdp)
+
+partial_data <- partial(object = fit_rf, pred.var = c("hum", "temp"), grid.resolution = c(20, 20))
+
+
+#plotPartial(partial_data, plot.engine = "ggplot2", zlab = "Bike Rentals", rug=TRUE, train=new_df) 
+
+```
+
+
+```{r}
+
+library(viridis)
+
+ggplot(partial_data, aes(x=hum, y=temp)) + geom_tile(aes(fill = yhat)) + geom_rug(position = "jitter", alpha=0.2, sides = "bl") + ggtitle('Bidimensional Partial Dependency Plot') + xlab('Humidity') + ylab('Temperature') + scale_fill_viridis(name='Bike rentals')  +  theme_minimal() 
+
+
+```
+
+
+
+
+
+
+
+
+
